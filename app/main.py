@@ -1,12 +1,12 @@
 from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List, Annotated
-import models
-from database import SessionLocal, engine
+import app.groups.models as members
+from app.database import SessionLocal, engine
 from sqlalchemy.orm import Session
 
 app = FastAPI()
-models.Base.metadata.create_all(bind=engine)
+members.Base.metadata.create_all(bind=engine)
 
 class Members(BaseModel):
     id: int
@@ -26,7 +26,7 @@ db_dependency = Annotated[Session, Depends(get_db)]
 
 @app.get("/members/{member_id}")
 async def read_members(member_id: int, db: db_dependency):
-    result = db.query(models.Members).filter(models.Members.id == member_id).first()
+    result = db.query(members.Members).filter(members.Members.id == member_id).first()
     if not result:
         raise HTTPException(status_code=404, detail="Member not found")
     return result
@@ -34,7 +34,7 @@ async def read_members(member_id: int, db: db_dependency):
 
 @app.post("/members/")
 async def create_member(member: Members, db: db_dependency):
-    db_member = models.Members(
+    db_member = members.Members(
         id=member.id,
         name=member.name,
         discord=member.discord,

@@ -10,8 +10,14 @@ router = APIRouter(
 )
 
 
-def find_group(group_id: int, db: db_dependency) -> Group:
+def find_group_by_id(group_id: int, db: db_dependency) -> Group:
     result = db.scalar(select(Group).where(Group.group_id == group_id))
+    if not result:
+        raise HTTPException(status_code=404, detail="Group not found")
+    return result
+
+def find_group_by_name(group_name: str, db: db_dependency) -> Group:
+    result = db.scalar(select(Group).where(Group.name == group_name))
     if not result:
         raise HTTPException(status_code=404, detail="Group not found")
     return result
@@ -23,9 +29,14 @@ def find_all_groups(db: db_dependency) -> list[Group]:
     return result
 
 # get individual group by ID
-@router.get("/{group_id}", response_model=schema.GroupResponse)
+@router.get("/id/{group_id}", response_model=schema.GroupResponse)
 async def read_group(group_id: int, db: db_dependency):
-    return find_group(group_id, db)
+    return find_group_by_id(group_id, db)
+
+# get individual group by Name
+@router.get("/name/{group_name}", response_model=schema.GroupResponse)
+async def read_group_by_name(group_name: str, db: db_dependency):
+    return find_group_by_name(group_name, db)
 
 # get all groups
 @router.get("/", response_model=list[schema.GroupResponse])
@@ -49,9 +60,17 @@ async def create_group(group: schema.GroupCreate, db: db_dependency):
 # update an existing group
 @router.patch("/{group_id}", response_model=schema.GroupResponse)
 async def update_group(group_id: int, group: schema.GroupUpdate, db: db_dependency):
-    db_group = find_group(group_id, db)
+    db_group = find_group_by_id(group_id, db)
     for field, value in group.model_dump(exclude_unset=True).items():
         setattr(db_group, field, value)
     db.commit()
     db.refresh(db_group)
+    return db_group
+
+# delete an existing group
+@router.delete("/{group_id}", response_model=schema.GroupResponse)
+async def delete_group(group_id: int, db: db_dependency):
+    db_group = find_group_by_id(group_id, db)
+    db.delete(db_group)
+    db.commit()
     return db_group

@@ -10,10 +10,10 @@ class Activity(Base):
     description = Column(String)
     expenditure = Column(BigInteger)
 
-class Excursion(Base):
-    __tablename__ = "excursions"
+class Activity_logs(Base):
+    __tablename__ = "activity_logs"
 
-    excursion_id = Column(Integer, primary_key=True, index=True)
+    activity_log_id = Column(Integer, primary_key=True, index=True)
     activity_id = Column(Integer, ForeignKey("activities.activity_id"))
     group_id = Column(Integer,ForeignKey("groups.group_id"))
     date = Column(String)

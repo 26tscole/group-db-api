@@ -1,13 +1,14 @@
 from fastapi import FastAPI
-from app.groups.router import router as groups_router
+from app.groups.group_router import router as groups_router
+from app.users.users_router import router as users_router
 
 app = FastAPI()
 
 all_routers = [
+    users_router,
     groups_router,
     # not implemented yet
     # app.debts.router.router,
-    # app.users.router.router,
     # app.activities.router.router,
 ]
 

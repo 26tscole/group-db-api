@@ -29,12 +29,12 @@ def find_all_groups(db: db_dependency) -> list[Group]:
     return result
 
 # get individual group by ID
-@router.get("/id/{group_id}", response_model=schema.GroupResponse)
+@router.get("/group_id/{group_id}", response_model=schema.GroupResponse)
 async def read_group(group_id: int, db: db_dependency):
     return find_group_by_id(group_id, db)
 
 # get individual group by Name
-@router.get("/name/{group_name}", response_model=schema.GroupResponse)
+@router.get("/group_name/{group_name}", response_model=schema.GroupResponse)
 async def read_group_by_name(group_name: str, db: db_dependency):
     return find_group_by_name(group_name, db)
 
@@ -68,9 +68,17 @@ async def update_group(group_id: int, group: schema.GroupUpdate, db: db_dependen
     return db_group
 
 # delete an existing group
-@router.delete("/{group_id}", response_model=schema.GroupResponse)
+@router.delete("/group_id/{group_id}", response_model=schema.GroupResponse)
 async def delete_group(group_id: int, db: db_dependency):
     db_group = find_group_by_id(group_id, db)
+    db.delete(db_group)
+    db.commit()
+    return db_group
+
+# delete an existing group by name
+@router.delete("/group_name/{group_name}", response_model=schema.GroupResponse)
+async def delete_group_by_name(group_name: str, db: db_dependency):
+    db_group = find_group_by_name(group_name, db)
     db.delete(db_group)
     db.commit()
     return db_group

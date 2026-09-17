@@ -17,6 +17,7 @@ class Member(Base):
     member_id = Column(Integer, primary_key=True, index=True)
     group_id = Column(Integer, ForeignKey("groups.group_id"))
     user_id = Column(Integer,ForeignKey("users.user_id"))
+    nickname = Column(String, nullable=True)
     date_joined = Column(String)
 
     # Ensure that each user can only be a member of a group once

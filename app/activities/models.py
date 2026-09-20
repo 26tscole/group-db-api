@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, UniqueConstraint, BigInteger
+from sqlalchemy import Boolean, Column, Date, ForeignKey, Integer, String, UniqueConstraint, BigInteger
 from app.database import Base
 
     
@@ -8,7 +8,7 @@ class Activity(Base):
     activity_id = Column(Integer, primary_key=True, index=True)
     name = Column(String)
     description = Column(String)
-    expenditure = Column(BigInteger)
+    expenditure = Column(Boolean)
 
 class Activity_logs(Base):
     __tablename__ = "activity_logs"
@@ -16,5 +16,5 @@ class Activity_logs(Base):
     activity_log_id = Column(Integer, primary_key=True, index=True)
     activity_id = Column(Integer, ForeignKey("activities.activity_id"))
     group_id = Column(Integer,ForeignKey("groups.group_id"))
-    date = Column(String)
-    net_expenditure = Column(BigInteger)
+    date = Column(Date)
+    net_gain = Column(BigInteger)

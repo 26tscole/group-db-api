@@ -37,13 +37,14 @@ class AccountResponse(AccountCreate):
 
 class PlatformCreate(BaseModel):
     name: str
-    website: str
+    url: str
 
 class PlatformUpdate(BaseModel):
     name: str | None = None
-    website: str | None = None
+    url: str | None = None
 
 class PlatformResponse(PlatformCreate):
     platform_id: int
+    url: str | None = None
 
     model_config = { "from_attributes": True }

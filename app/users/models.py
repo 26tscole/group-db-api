@@ -6,16 +6,22 @@ class User(Base):
     __tablename__ = "users"
 
     user_id = Column(Integer, primary_key=True, index=True)
-    name = Column(String)
+    name = Column(String, nullable=False)
     date_of_birth = Column(Date, nullable=False)
     phone_number = Column(String)
     email = Column(String)
     address = Column(String)
 
+    # only one user with the same email
+    __table_args__ = (
+        UniqueConstraint("email", name="unique_user"),
+    )
+
 class Account(Base):
     __tablename__ = "accounts"
 
     account_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.user_id"))
     platform_id = Column(Integer, ForeignKey("platforms.platform_id"))
     username = Column(String)
     active_status = Column(Boolean, nullable=False)
@@ -30,4 +36,4 @@ class Platform(Base):
 
     platform_id = Column(Integer, primary_key=True, index=True)
     name = Column(String)
-    website = Column(String)
+    url = Column(String)

@@ -17,7 +17,7 @@ class User(Base):
         UniqueConstraint("email", name="unique_user"),
     )
 
-class Account(Base):
+class Activity(Base):
     __tablename__ = "accounts"
 
     account_id = Column(Integer, primary_key=True, index=True)

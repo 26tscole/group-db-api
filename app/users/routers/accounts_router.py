@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy import select
-from app.users.models import Account
+from app.users.models import Activity
 from app.users import schema
 from app.dependencies import db_dependency
 
@@ -9,20 +9,20 @@ router = APIRouter(
     tags=["platforms"]
 )
 
-def find_account_by_id(account_id: int, db: db_dependency) -> Account:
-    result = db.scalar(select(Account).where(Account.account_id == account_id))
+def find_account_by_id(account_id: int, db: db_dependency) -> Activity:
+    result = db.scalar(select(Activity).where(Activity.account_id == account_id))
     if not result:
         raise HTTPException(status_code=404, detail="Account not found")
     return result
 
-def find_account_by_username(username: str, db: db_dependency) -> Account:
-    result = db.scalar(select(Account).where(Account.username == username))
+def find_account_by_username(username: str, db: db_dependency) -> Activity:
+    result = db.scalar(select(Activity).where(Activity.username == username))
     if not result:
         raise HTTPException(status_code=404, detail="Account not found")
     return result
 
-def find_all_accounts(db: db_dependency) -> list[Account]:
-    result = db.scalars(select(Account)).all()
+def find_all_accounts(db: db_dependency) -> list[Activity]:
+    result = db.scalars(select(Activity)).all()
     if not result:
         raise HTTPException(status_code=404, detail="No accounts found")
     return result
@@ -45,7 +45,7 @@ async def read_accounts(db: db_dependency):
 # create a new account
 @router.post("/", response_model=schema.AccountResponse)
 async def create_account(account: schema.AccountCreate, db: db_dependency):
-    db_account = Account(
+    db_account = Activity(
         user_id=account.user_id,
         platform_id=account.platform_id,
         username=account.username,

@@ -3,17 +3,15 @@ from pydantic import BaseModel
 
 class ActivityCreate(BaseModel):
     name: str
-    date_of_birth: date
-    phone_number: str
-    email: str
-    address: str
+    date_created: date
+    description: str
+    expenditure: bool
 
 class ActivityUpdate(BaseModel):
+    date_created: date | None = None
     name: str | None = None
-    date_of_birth: date | None = None
-    phone_number: str | None = None
-    email: str | None = None
-    address: str | None = None
+    description: str | None = None
+    expenditure: bool | None = None
 
 class ActivityResponse(ActivityCreate):
     activity_id: int
@@ -22,13 +20,15 @@ class ActivityResponse(ActivityCreate):
 
 class ActivityLogCreate(BaseModel):
     activity_id: int
-    user_id: int
-    timestamp: date
+    group_id: int
+    date_created: date
+    net_gain: int
 
 class ActivityLogUpdate(BaseModel):
     activity_id: int | None = None
-    user_id: int | None = None
-    timestamp: date | None = None
+    group_id: int | None = None
+    date_created: date | None = None
+    net_gain: int | None = None
 
 class ActivityLogResponse(ActivityLogCreate):
     activity_log_id: int

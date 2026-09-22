@@ -1,8 +1,8 @@
-"""create initial schema
+"""initial schema
 
-Revision ID: 92c7b4c51273
-Revises: 
-Create Date: 2026-09-16 22:02:06.854506
+Revision ID: c12b4ad6ee34
+Revises: db2fed73d3c2
+Create Date: 2026-09-22 14:49:25.755693
 
 """
 from typing import Sequence, Union
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '92c7b4c51273'
-down_revision: Union[str, Sequence[str], None] = None
+revision: str = 'c12b4ad6ee34'
+down_revision: Union[str, Sequence[str], None] = 'db2fed73d3c2'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -24,50 +24,42 @@ def upgrade() -> None:
     op.create_table('activities',
     sa.Column('activity_id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(), nullable=True),
+    sa.Column('date_created', sa.Date(), nullable=True),
     sa.Column('description', sa.String(), nullable=True),
-    sa.Column('expenditure', sa.BigInteger(), nullable=True),
+    sa.Column('expenditure', sa.Boolean(), nullable=True),
     sa.PrimaryKeyConstraint('activity_id')
     )
     op.create_index(op.f('ix_activities_activity_id'), 'activities', ['activity_id'], unique=False)
     op.create_table('platforms',
     sa.Column('platform_id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(), nullable=True),
-    sa.Column('website', sa.String(), nullable=True),
+    sa.Column('url', sa.String(), nullable=True),
     sa.PrimaryKeyConstraint('platform_id')
     )
     op.create_index(op.f('ix_platforms_platform_id'), 'platforms', ['platform_id'], unique=False)
     op.create_table('users',
     sa.Column('user_id', sa.Integer(), nullable=False),
-    sa.Column('name', sa.String(), nullable=True),
-    sa.Column('date_of_birth', sa.String(), nullable=True),
+    sa.Column('name', sa.String(), nullable=False),
+    sa.Column('date_of_birth', sa.Date(), nullable=False),
     sa.Column('phone_number', sa.String(), nullable=True),
     sa.Column('email', sa.String(), nullable=True),
     sa.Column('address', sa.String(), nullable=True),
-    sa.PrimaryKeyConstraint('user_id')
+    sa.PrimaryKeyConstraint('user_id'),
+    sa.UniqueConstraint('email', name='unique_user')
     )
     op.create_index(op.f('ix_users_user_id'), 'users', ['user_id'], unique=False)
     op.create_table('accounts',
     sa.Column('account_id', sa.Integer(), nullable=False),
+    sa.Column('user_id', sa.Integer(), nullable=True),
     sa.Column('platform_id', sa.Integer(), nullable=True),
     sa.Column('username', sa.String(), nullable=True),
-    sa.Column('date_joined', sa.String(), nullable=True),
+    sa.Column('active_status', sa.Boolean(), nullable=False),
     sa.ForeignKeyConstraint(['platform_id'], ['platforms.platform_id'], ),
+    sa.ForeignKeyConstraint(['user_id'], ['users.user_id'], ),
     sa.PrimaryKeyConstraint('account_id'),
     sa.UniqueConstraint('platform_id', 'username', name='unique_platform_account')
     )
     op.create_index(op.f('ix_accounts_account_id'), 'accounts', ['account_id'], unique=False)
-    op.create_table('debts',
-    sa.Column('debt_id', sa.Integer(), nullable=False),
-    sa.Column('creditor_id', sa.Integer(), nullable=True),
-    sa.Column('debtor_id', sa.Integer(), nullable=True),
-    sa.Column('reason', sa.String(), nullable=True),
-    sa.Column('satisified', sa.Boolean(), nullable=True),
-    sa.Column('amount', sa.BigInteger(), nullable=True),
-    sa.ForeignKeyConstraint(['creditor_id'], ['users.user_id'], ),
-    sa.ForeignKeyConstraint(['debtor_id'], ['users.user_id'], ),
-    sa.PrimaryKeyConstraint('debt_id')
-    )
-    op.create_index(op.f('ix_debts_debt_id'), 'debts', ['debt_id'], unique=False)
     op.create_table('groups',
     sa.Column('group_id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(), nullable=True),
@@ -79,21 +71,22 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('group_id')
     )
     op.create_index(op.f('ix_groups_group_id'), 'groups', ['group_id'], unique=False)
-    op.create_table('excursions',
-    sa.Column('excursion_id', sa.Integer(), nullable=False),
+    op.create_table('activity_logs',
+    sa.Column('activity_log_id', sa.Integer(), nullable=False),
     sa.Column('activity_id', sa.Integer(), nullable=True),
     sa.Column('group_id', sa.Integer(), nullable=True),
-    sa.Column('date', sa.String(), nullable=True),
-    sa.Column('net_expenditure', sa.BigInteger(), nullable=True),
+    sa.Column('date_created', sa.Date(), nullable=True),
+    sa.Column('net_gain', sa.BigInteger(), nullable=True),
     sa.ForeignKeyConstraint(['activity_id'], ['activities.activity_id'], ),
     sa.ForeignKeyConstraint(['group_id'], ['groups.group_id'], ),
-    sa.PrimaryKeyConstraint('excursion_id')
+    sa.PrimaryKeyConstraint('activity_log_id')
     )
-    op.create_index(op.f('ix_excursions_excursion_id'), 'excursions', ['excursion_id'], unique=False)
+    op.create_index(op.f('ix_activity_logs_activity_log_id'), 'activity_logs', ['activity_log_id'], unique=False)
     op.create_table('members',
     sa.Column('member_id', sa.Integer(), nullable=False),
     sa.Column('group_id', sa.Integer(), nullable=True),
     sa.Column('user_id', sa.Integer(), nullable=True),
+    sa.Column('nickname', sa.String(), nullable=True),
     sa.Column('date_joined', sa.String(), nullable=True),
     sa.ForeignKeyConstraint(['group_id'], ['groups.group_id'], ),
     sa.ForeignKeyConstraint(['user_id'], ['users.user_id'], ),
@@ -101,20 +94,34 @@ def upgrade() -> None:
     sa.UniqueConstraint('group_id', 'user_id', name='unique_group_member')
     )
     op.create_index(op.f('ix_members_member_id'), 'members', ['member_id'], unique=False)
+    op.create_table('debts',
+    sa.Column('debt_id', sa.Integer(), nullable=False),
+    sa.Column('activity_log_id', sa.Integer(), nullable=True),
+    sa.Column('creditor_id', sa.Integer(), nullable=True),
+    sa.Column('debtor_id', sa.Integer(), nullable=True),
+    sa.Column('reason', sa.String(), nullable=True),
+    sa.Column('satisfied', sa.Boolean(), nullable=True),
+    sa.Column('amount', sa.BigInteger(), nullable=True),
+    sa.ForeignKeyConstraint(['activity_log_id'], ['activity_logs.activity_log_id'], ),
+    sa.ForeignKeyConstraint(['creditor_id'], ['members.member_id'], ),
+    sa.ForeignKeyConstraint(['debtor_id'], ['members.member_id'], ),
+    sa.PrimaryKeyConstraint('debt_id')
+    )
+    op.create_index(op.f('ix_debts_debt_id'), 'debts', ['debt_id'], unique=False)
     # ### end Alembic commands ###
 
 
 def downgrade() -> None:
     """Downgrade schema."""
     # ### commands auto generated by Alembic - please adjust! ###
-    op.drop_index(op.f('ix_members_member_id'), table_name='members')
-    op.drop_table('members')
-    op.drop_index(op.f('ix_excursions_excursion_id'), table_name='excursions')
-    op.drop_table('excursions')
-    op.drop_index(op.f('ix_groups_group_id'), table_name='groups')
-    op.drop_table('groups')
     op.drop_index(op.f('ix_debts_debt_id'), table_name='debts')
     op.drop_table('debts')
+    op.drop_index(op.f('ix_members_member_id'), table_name='members')
+    op.drop_table('members')
+    op.drop_index(op.f('ix_activity_logs_activity_log_id'), table_name='activity_logs')
+    op.drop_table('activity_logs')
+    op.drop_index(op.f('ix_groups_group_id'), table_name='groups')
+    op.drop_table('groups')
     op.drop_index(op.f('ix_accounts_account_id'), table_name='accounts')
     op.drop_table('accounts')
     op.drop_index(op.f('ix_users_user_id'), table_name='users')

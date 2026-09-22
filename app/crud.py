@@ -1,13 +1,23 @@
 from typing import Generic, Iterable, Mapping, Sequence, Type, TypeVar
+from unittest import result
 from fastapi import HTTPException
-from pydantic import BaseModel
-from sqlalchemy import select
+from pydantic import BaseModel, TypeAdapter
+from sqlalchemy import ColumnElement, select
 from sqlalchemy.orm import Session
 
 ModelType = TypeVar("ModelType")
 CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
 UpdateSchemaType = TypeVar("UpdateSchemaType", bound=BaseModel)
 
+CONDITION_BUILDERS = {
+    "eq": lambda column, value: column == value,
+    "gt": lambda column, value: column > value,
+    "gte": lambda column, value: column >= value,
+    "lt": lambda column, value: column < value,
+    "lte": lambda column, value: column <= value,
+    "contains": lambda column, value: column.ilike(f"%{value}%"),
+    "startswith": lambda column, value: column.ilike(f"{value}%"),
+}
 
 def build_filters(model: Type[ModelType], params: Mapping[str, str], allowed_fields: Iterable[str] | None = None) -> dict:
     """Turn raw query-string params into typed filters, ignoring keys that
@@ -28,7 +38,41 @@ def build_filters(model: Type[ModelType], params: Mapping[str, str], allowed_fie
             raise HTTPException(status_code=400, detail=f"Invalid value for '{key}'")
     return filters
 
+def build_conditions( model: Type[ModelType], params: Mapping[str, str], allowed_fields: Iterable[str] | None = None, ) -> list[ColumnElement[bool]]:
+    columns = { column.name: column for column in model.__table__.columns}
 
+    if allowed_fields is not None:
+        columns = { name: column for name, column in columns.items() if name in allowed_fields }
+
+    conditions = []
+
+    for raw_key, raw_value in params.items():
+        if raw_value in (None, ""):
+            continue
+
+        if "__" in raw_key:
+            field_name, operator = raw_key.split("__", 1)
+        else:
+            field_name, operator = raw_key, "eq"
+
+        if field_name not in columns:
+            continue
+
+        column = columns[field_name]
+
+        try:
+            value = TypeAdapter(column.type.python_type).validate_python(raw_value)
+        except (TypeError, ValueError):
+            raise HTTPException( status_code=400, detail=f"Invalid value for '{field_name}'", )
+
+        if operator not in CONDITION_BUILDERS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported filter operator '{operator}'",
+            )
+        conditions.append(CONDITION_BUILDERS[operator](column, value))
+
+    return conditions
 
 class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     """Reusable get/create/update/delete helper bound to one SQLAlchemy model.
@@ -61,6 +105,14 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     def search(self, db: Session, filters: dict) -> Sequence[ModelType]:
         """get_all when no filters are supplied, otherwise get_many_by(**filters)."""
         return self.get_all(db) if not filters else self.get_many_by(db, **filters)
+
+    def search_conditions( self, db: Session, conditions: list[ColumnElement[bool]],) -> Sequence[ModelType]:
+        statement = select(self.model).where(*conditions)
+        result = db.scalars(statement).all()
+
+        if not result:
+            raise HTTPException( status_code=404, detail=self.not_found_detail, )
+        return result
 
     def require_filters(self, filters: dict) -> dict:
         if not filters:

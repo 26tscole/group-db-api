@@ -1,83 +1,48 @@
-from fastapi import APIRouter, HTTPException, Depends
-from sqlalchemy import select
-from app.users.models import Activity
+from fastapi import APIRouter, Request
+from app.users.models import Account
 from app.users import schema
+from app.crud import CRUDBase, build_filters
 from app.dependencies import db_dependency
 
-router = APIRouter(
-    prefix="/platforms",
-    tags=["platforms"]
+router = APIRouter(prefix="/accounts", tags=["accounts"])
+
+account_crud = CRUDBase[Account, schema.AccountCreate, schema.AccountUpdate](
+    Account, not_found_detail="Account not found"
 )
 
-def find_account_by_id(account_id: int, db: db_dependency) -> Activity:
-    result = db.scalar(select(Activity).where(Activity.account_id == account_id))
-    if not result:
-        raise HTTPException(status_code=404, detail="Account not found")
-    return result
 
-def find_account_by_username(username: str, db: db_dependency) -> Activity:
-    result = db.scalar(select(Activity).where(Activity.username == username))
-    if not result:
-        raise HTTPException(status_code=404, detail="Account not found")
-    return result
-
-def find_all_accounts(db: db_dependency) -> list[Activity]:
-    result = db.scalars(select(Activity)).all()
-    if not result:
-        raise HTTPException(status_code=404, detail="No accounts found")
-    return result
-
-# get individual account by ID
-@router.get("/account_id/{account_id}", response_model=schema.AccountResponse)
-async def read_account(account_id: int, db: db_dependency):
-    return find_account_by_id(account_id, db)
-
-# get individual account by Username
-@router.get("/username/{username}", response_model=schema.AccountResponse)
-async def read_account_by_username(username: str, db: db_dependency):
-    return find_account_by_username(username, db)
-
-# get all accounts
+# search accounts
 @router.get("/", response_model=list[schema.AccountResponse])
-async def read_accounts(db: db_dependency):
-    return find_all_accounts(db)
+async def search_accounts(request: Request, db: db_dependency):
+    filters = build_filters(Account, request.query_params)
+    return account_crud.search(db, filters)
+
 
 # create a new account
 @router.post("/", response_model=schema.AccountResponse)
 async def create_account(account: schema.AccountCreate, db: db_dependency):
-    db_account = Activity(
-        user_id=account.user_id,
-        platform_id=account.platform_id,
-        username=account.username,
-        active_status=account.active_status
-    )
-    db.add(db_account)
-    db.commit()
-    db.refresh(db_account)
-    return db_account
+    return account_crud.create(db, account)
 
-# update an existing account
-@router.patch("/{account_id}", response_model=schema.AccountResponse)
-async def update_account(account_id: int, account: schema.AccountUpdate, db: db_dependency):
-    db_account = find_account_by_id(account_id, db)
-    for field, value in account.model_dump(exclude_unset=True).items():
-        setattr(db_account, field, value)
-    db.commit()
-    db.refresh(db_account)
-    return db_account
 
-# delete an existing account
-@router.delete("/account_id/{account_id}", response_model=schema.AccountResponse)
-async def delete_account(account_id: int, db: db_dependency):
-    db_account = find_account_by_id(account_id, db)
-    db.delete(db_account)
-    db.commit()
-    return db_account
+# update the account matching the query filters, e.g. /accounts/?account_id=1
+@router.patch("/", response_model=schema.AccountResponse)
+async def update_account(
+    request: Request, account: schema.AccountUpdate, db: db_dependency
+):
+    filters = account_crud.require_filters(build_filters(Account, request.query_params))
+    db_account = account_crud.get_by(db, **filters)
+    return account_crud.update(db, db_account, account)
 
-# delete an existing account by username
-@router.delete("/username/{username}", response_model=schema.AccountResponse)
-async def delete_account_by_username(username: str, db: db_dependency):
-    db_account = find_account_by_username(username, db)
-    db.delete(db_account)
-    db.commit()
-    return db_account
+
+# delete account(s) matching the query filters, e.g. /accounts/?account_id=2
+@router.delete("/", response_model=list[schema.AccountResponse])
+async def delete_accounts(request: Request, db: db_dependency):
+    filters = account_crud.require_filters(build_filters(Account, request.query_params))
+    db_accounts = account_crud.get_many_by(db, **filters)
+    return account_crud.delete_many(db, db_accounts)
+
+
+# delete all accounts
+@router.delete("/all", response_model=list[schema.AccountResponse])
+async def delete_all_accounts(db: db_dependency):
+    return account_crud.delete_all(db)

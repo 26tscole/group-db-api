@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 
+
 class DebtCreate(BaseModel):
     activity_log_id: int
     creditor_id: int
@@ -7,6 +8,7 @@ class DebtCreate(BaseModel):
     reason: str
     satisified: bool
     amount: int
+
 
 class DebtUpdate(BaseModel):
     activity_log_id: int | None = None
@@ -16,7 +18,8 @@ class DebtUpdate(BaseModel):
     satisified: bool | None = None
     amount: int | None = None
 
+
 class DebtResponse(DebtCreate):
     debt_id: int
 
-    model_config = { "from_attributes": True }
+    model_config = {"from_attributes": True}

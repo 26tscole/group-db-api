@@ -1,7 +1,15 @@
-from sqlalchemy import Boolean, Column, Date, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    Column,
+    Date,
+    ForeignKey,
+    Integer,
+    String,
+    UniqueConstraint,
+)
 from app.database import Base
 
-    
+
 class User(Base):
     __tablename__ = "users"
 
@@ -13,11 +21,10 @@ class User(Base):
     address = Column(String)
 
     # only one user with the same email
-    __table_args__ = (
-        UniqueConstraint("email", name="unique_user"),
-    )
+    __table_args__ = (UniqueConstraint("email", name="unique_user"),)
 
-class Activity(Base):
+
+class Account(Base):
     __tablename__ = "accounts"
 
     account_id = Column(Integer, primary_key=True, index=True)
@@ -30,6 +37,7 @@ class Activity(Base):
     __table_args__ = (
         UniqueConstraint("platform_id", "username", name="unique_platform_account"),
     )
+
 
 class Platform(Base):
     __tablename__ = "platforms"

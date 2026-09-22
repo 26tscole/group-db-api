@@ -1,83 +1,52 @@
-from fastapi import APIRouter, HTTPException
-from sqlalchemy import select
+from fastapi import APIRouter, Request
 from app.activities.models import Activity
 from app.activities import schema
+from app.crud import CRUDBase, build_filters
 from app.dependencies import db_dependency
 
-router = APIRouter(
-    prefix="/activities",
-    tags=["activities"]
+router = APIRouter(prefix="/activities", tags=["activities"])
+
+activity_crud = CRUDBase[Activity, schema.ActivityCreate, schema.ActivityUpdate](
+    Activity, not_found_detail="Activity not found"
 )
 
-def find_activity_by_id(activity_id: int, db: db_dependency) -> Activity:
-    result = db.scalar(select(Activity).where(Activity.activity_id == activity_id))
-    if not result:
-        raise HTTPException(status_code=404, detail="Activity not found")
-    return result
 
-def find_activity_by_name(name: str, db: db_dependency) -> Activity:
-    result = db.scalar(select(Activity).where(Activity.name == name))
-    if not result:
-        raise HTTPException(status_code=404, detail="Activity not found")
-    return result
-
-def find_all_activities(db: db_dependency) -> list[Activity]:
-    result = db.scalars(select(Activity)).all()
-    if not result:
-        raise HTTPException(status_code=404, detail="No activities found")
-    return result
-
-# get individual activity by ID
-@router.get("/activity_id/{activity_id}", response_model=schema.ActivityResponse)
-async def read_activity(activity_id: int, db: db_dependency):
-    return find_activity_by_id(activity_id, db)
-
-# get individual activity by Name
-@router.get("/name/{name}", response_model=schema.ActivityResponse)
-async def read_activity_by_name(name: str, db: db_dependency):
-    return find_activity_by_name(name, db)
-
-# get all activities
+# search activities, e.g. /activities/?activity_id=5 or /activities/?activity_id=1
 @router.get("/", response_model=list[schema.ActivityResponse])
-async def read_activities(db: db_dependency):
-    return find_all_activities(db)
+async def search_activities(request: Request, db: db_dependency):
+    filters = build_filters(Activity, request.query_params)
+    return activity_crud.search(db, filters)
+
 
 # create a new activity
 @router.post("/", response_model=schema.ActivityResponse)
 async def create_activity(activity: schema.ActivityCreate, db: db_dependency):
-    db_activity = Activity(
-        name=activity.name,
-        date_created=activity.date_created,
-        description=activity.description,
-        expenditure=activity.expenditure
+    return activity_crud.create(db, activity)
+
+
+# update activity(s) matching the query filters, e.g. /activities/?activity_id=1
+@router.patch("/", response_model=schema.ActivityResponse)
+async def update_activity(
+    request: Request, activity: schema.ActivityUpdate, db: db_dependency
+):
+    filters = activity_crud.require_filters(
+        build_filters(Activity, request.query_params)
     )
-    db.add(db_activity)
-    db.commit()
-    db.refresh(db_activity)
-    return db_activity
+    db_activity = activity_crud.get_by(db, **filters)
+    return activity_crud.update(db, db_activity, activity)
 
-# update an existing activity
-@router.patch("/activity_id/{activity_id}", response_model=schema.ActivityResponse)
-async def update_activity(activity_id: int, activity: schema.ActivityUpdate, db: db_dependency):
-    db_activity = find_activity_by_id(activity_id, db)
-    for field, value in activity.model_dump(exclude_unset=True).items():
-        setattr(db_activity, field, value)
-    db.commit()
-    db.refresh(db_activity)
-    return db_activity
 
-# delete an existing activity by ID
-@router.delete("/activity_id/{activity_id}", response_model=schema.ActivityResponse)
-async def delete_activity(activity_id: int, db: db_dependency):
-    db_activity = find_activity_by_id(activity_id, db)
-    db.delete(db_activity)
-    db.commit()
-    return db_activity
+# delete activity(s) matching the query filters, e.g. /activities/?activity_id=5
+@router.delete("/", response_model=list[schema.ActivityResponse])
+async def delete_activities(request: Request, db: db_dependency):
+    filters = activity_crud.require_filters(
+        build_filters(Activity, request.query_params)
+    )
+    db_activities = activity_crud.get_many_by(db, **filters)
+    return activity_crud.delete_many(db, db_activities)
 
-# delete an existing activity by Name
-@router.delete("/name/{name}", response_model=schema.ActivityResponse)
-async def delete_activity_by_name(name: str, db: db_dependency):
-    db_activity = find_activity_by_name(name, db)
-    db.delete(db_activity)
-    db.commit()
-    return db_activity
+
+# delete all activities
+@router.delete("/all", response_model=list[schema.ActivityResponse])
+async def delete_all_activities(db: db_dependency):
+    return activity_crud.delete_all(db)

@@ -1,84 +1,46 @@
-from fastapi import APIRouter, HTTPException, Depends
-from sqlalchemy import select
-from app.groups.models import Member, Group
+from fastapi import APIRouter, Request
+from app.groups.models import Group
 from app.groups import schema
+from app.crud import CRUDBase, build_filters
 from app.dependencies import db_dependency
 
-router = APIRouter(
-    prefix="/groups",
-    tags=["groups"],
+router = APIRouter(prefix="/groups", tags=["groups"])
+
+group_crud = CRUDBase[Group, schema.GroupCreate, schema.GroupUpdate](
+    Group, not_found_detail="Group not found"
 )
 
 
-def find_group_by_id(group_id: int, db: db_dependency) -> Group:
-    result = db.scalar(select(Group).where(Group.group_id == group_id))
-    if not result:
-        raise HTTPException(status_code=404, detail="Group not found")
-    return result
-
-def find_group_by_name(group_name: str, db: db_dependency) -> Group:
-    result = db.scalar(select(Group).where(Group.name == group_name))
-    if not result:
-        raise HTTPException(status_code=404, detail="Group not found")
-    return result
-
-def find_all_groups(db: db_dependency) -> list[Group]:
-    result = db.scalars(select(Group)).all()
-    if not result:
-        raise HTTPException(status_code=404, detail="No groups found")
-    return result
-
-# get individual group by ID
-@router.get("/group_id/{group_id}", response_model=schema.GroupResponse)
-async def read_group(group_id: int, db: db_dependency):
-    return find_group_by_id(group_id, db)
-
-# get individual group by Name
-@router.get("/group_name/{group_name}", response_model=schema.GroupResponse)
-async def read_group_by_name(group_name: str, db: db_dependency):
-    return find_group_by_name(group_name, db)
-
-# get all groups
+# search groups
 @router.get("/", response_model=list[schema.GroupResponse])
-async def read_groups(db: db_dependency):
-    return find_all_groups(db)
+async def search_groups(request: Request, db: db_dependency):
+    filters = build_filters(Group, request.query_params)
+    return group_crud.search(db, filters)
+
 
 # create a new group
 @router.post("/", response_model=schema.GroupResponse)
 async def create_group(group: schema.GroupCreate, db: db_dependency):
-    db_group = Group(
-        name=group.name,
-        owner=group.owner,
-        date_created=group.date_created,
-        parent_group_id=group.parent_group_id
-    )
-    db.add(db_group)
-    db.commit()
-    db.refresh(db_group)
-    return db_group
+    return group_crud.create(db, group)
 
-# update an existing group
-@router.patch("/{group_id}", response_model=schema.GroupResponse)
-async def update_group(group_id: int, group: schema.GroupUpdate, db: db_dependency):
-    db_group = find_group_by_id(group_id, db)
-    for field, value in group.model_dump(exclude_unset=True).items():
-        setattr(db_group, field, value)
-    db.commit()
-    db.refresh(db_group)
-    return db_group
 
-# delete an existing group
-@router.delete("/group_id/{group_id}", response_model=schema.GroupResponse)
-async def delete_group(group_id: int, db: db_dependency):
-    db_group = find_group_by_id(group_id, db)
-    db.delete(db_group)
-    db.commit()
-    return db_group
+# update the group matching the query filters, e.g. /groups/?group_id=1
+@router.patch("/", response_model=schema.GroupResponse)
+async def update_group(request: Request, group: schema.GroupUpdate, db: db_dependency):
+    filters = group_crud.require_filters(build_filters(Group, request.query_params))
+    db_group = group_crud.get_by(db, **filters)
+    return group_crud.update(db, db_group, group)
 
-# delete an existing group by name
-@router.delete("/group_name/{group_name}", response_model=schema.GroupResponse)
-async def delete_group_by_name(group_name: str, db: db_dependency):
-    db_group = find_group_by_name(group_name, db)
-    db.delete(db_group)
-    db.commit()
-    return db_group
+
+# delete group(s) matching the query filters, e.g. /groups/?group_id=2
+@router.delete("/", response_model=list[schema.GroupResponse])
+async def delete_groups(request: Request, db: db_dependency):
+    filters = group_crud.require_filters(build_filters(Group, request.query_params))
+    db_groups = group_crud.get_many_by(db, **filters)
+    return group_crud.delete_many(db, db_groups)
+
+
+# delete all groups
+@router.delete("/all", response_model=list[schema.GroupResponse])
+async def delete_all_groups(db: db_dependency):
+    return group_crud.delete_all(db)

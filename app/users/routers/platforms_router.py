@@ -1,81 +1,52 @@
-from fastapi import APIRouter, HTTPException
-from sqlalchemy import select
+from fastapi import APIRouter, Request
 from app.users.models import Platform
 from app.users import schema
+from app.crud import CRUDBase, build_filters
 from app.dependencies import db_dependency
 
-router = APIRouter(
-    prefix="/platforms",
-    tags=["platforms"]
+router = APIRouter(prefix="/platforms", tags=["platforms"])
+
+platform_crud = CRUDBase[Platform, schema.PlatformCreate, schema.PlatformUpdate](
+    Platform, not_found_detail="Platform not found"
 )
 
-def find_platform_by_id(platform_id: int, db: db_dependency) -> Platform:
-    result = db.scalar(select(Platform).where(Platform.platform_id == platform_id))
-    if not result:
-        raise HTTPException(status_code=404, detail="Platform not found")
-    return result
 
-def find_platform_by_name(platform_name: str, db: db_dependency) -> Platform:
-    result = db.scalar(select(Platform).where(Platform.name == platform_name))
-    if not result:
-        raise HTTPException(status_code=404, detail="Platform not found")
-    return result
-
-def find_all_platforms(db: db_dependency) -> list[Platform]:
-    result = db.scalars(select(Platform)).all()
-    if not result:
-        raise HTTPException(status_code=404, detail="No platforms found")
-    return result
-
-# get individual platform by ID
-@router.get("/platform_id/{platform_id}", response_model=schema.PlatformResponse)
-async def read_platform(platform_id: int, db: db_dependency):
-    return find_platform_by_id(platform_id, db)
-
-# get individual platform by Name
-@router.get("/platform_name/{platform_name}", response_model=schema.PlatformResponse)
-async def read_platform_by_name(platform_name: str, db: db_dependency):
-    return find_platform_by_name(platform_name, db)
-
-# get all platforms
+# search groups
 @router.get("/", response_model=list[schema.PlatformResponse])
-async def read_platforms(db: db_dependency):
-    return find_all_platforms(db)
+async def search_platforms(request: Request, db: db_dependency):
+    filters = build_filters(Platform, request.query_params)
+    return platform_crud.search(db, filters)
 
-# create a new platform
+
+# create a new group
 @router.post("/", response_model=schema.PlatformResponse)
 async def create_platform(platform: schema.PlatformCreate, db: db_dependency):
-    db_platform = Platform(
-        name=platform.name,
-        url=platform.url
+    return platform_crud.create(db, platform)
+
+
+# update the platform matching the query filters, e.g. /platforms/?platform_id=1
+@router.patch("/", response_model=schema.PlatformResponse)
+async def update_platform(
+    request: Request, platform: schema.PlatformUpdate, db: db_dependency
+):
+    filters = platform_crud.require_filters(
+        build_filters(Platform, request.query_params)
     )
-    db.add(db_platform)
-    db.commit()
-    db.refresh(db_platform)
-    return db_platform
+    db_platform = platform_crud.get_by(db, **filters)
+    return platform_crud.update(db, db_platform, platform)
 
-# update an existing platform
-@router.patch("/{platform_id}", response_model=schema.PlatformResponse)
-async def update_platform(platform_id: int, platform: schema.PlatformUpdate, db: db_dependency):
-    db_platform = find_platform_by_id(platform_id, db)
-    for field, value in platform.model_dump(exclude_unset=True).items():
-        setattr(db_platform, field, value)
-    db.commit()
-    db.refresh(db_platform)
-    return db_platform
 
-# delete an existing platform
-@router.delete("/platform_id/{platform_id}", response_model=schema.PlatformResponse)
-async def delete_platform(platform_id: int, db: db_dependency):
-    db_platform = find_platform_by_id(platform_id, db)
-    db.delete(db_platform)
-    db.commit()
-    return db_platform
+# delete platform(s) matching the query filters, e.g. /platforms/?platform_id=2
+@router.delete("/", response_model=list[schema.PlatformResponse])
+async def delete_platforms(request: Request, db: db_dependency):
+    filters = platform_crud.require_filters(
+        build_filters(Platform, request.query_params)
+    )
+    db_platforms = platform_crud.get_many_by(db, **filters)
+    return platform_crud.delete_many(db, db_platforms)
 
-# delete an existing platform by name
-@router.delete("/platform_name/{platform_name}", response_model=schema.PlatformResponse)
-async def delete_platform_by_name(platform_name: str, db: db_dependency):
-    db_platform = find_platform_by_name(platform_name, db)
-    db.delete(db_platform)
-    db.commit()
-    return db_platform
+
+# delete all platforms
+@router.delete("/all", response_model=list[schema.PlatformResponse])
+async def delete_all_platforms(db: db_dependency):
+    return platform_crud.delete_all(db)

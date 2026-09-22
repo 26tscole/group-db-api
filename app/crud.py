@@ -19,7 +19,12 @@ CONDITION_BUILDERS = {
     "startswith": lambda column, value: column.ilike(f"{value}%"),
 }
 
-def build_filters(model: Type[ModelType], params: Mapping[str, str], allowed_fields: Iterable[str] | None = None) -> dict:
+
+def build_filters(
+    model: Type[ModelType],
+    params: Mapping[str, str],
+    allowed_fields: Iterable[str] | None = None,
+) -> dict:
     """Turn raw query-string params into typed filters, ignoring keys that
     aren't columns on `model` (e.g. FastAPI/pagination params).
 
@@ -27,7 +32,9 @@ def build_filters(model: Type[ModelType], params: Mapping[str, str], allowed_fie
     on (e.g. only ID columns, not dates)."""
     columns = {c.name: c.type.python_type for c in model.__table__.columns}
     if allowed_fields is not None:
-        columns = {name: py_type for name, py_type in columns.items() if name in allowed_fields}
+        columns = {
+            name: py_type for name, py_type in columns.items() if name in allowed_fields
+        }
     filters = {}
     for key, value in params.items():
         if key not in columns or value in (None, ""):
@@ -38,11 +45,18 @@ def build_filters(model: Type[ModelType], params: Mapping[str, str], allowed_fie
             raise HTTPException(status_code=400, detail=f"Invalid value for '{key}'")
     return filters
 
-def build_conditions( model: Type[ModelType], params: Mapping[str, str], allowed_fields: Iterable[str] | None = None, ) -> list[ColumnElement[bool]]:
-    columns = { column.name: column for column in model.__table__.columns}
+
+def build_conditions(
+    model: Type[ModelType],
+    params: Mapping[str, str],
+    allowed_fields: Iterable[str] | None = None,
+) -> list[ColumnElement[bool]]:
+    columns = {column.name: column for column in model.__table__.columns}
 
     if allowed_fields is not None:
-        columns = { name: column for name, column in columns.items() if name in allowed_fields }
+        columns = {
+            name: column for name, column in columns.items() if name in allowed_fields
+        }
 
     conditions = []
 
@@ -63,14 +77,21 @@ def build_conditions( model: Type[ModelType], params: Mapping[str, str], allowed
         try:
             value = TypeAdapter(column.type.python_type).validate_python(raw_value)
         except (TypeError, ValueError):
-            raise HTTPException( status_code=400, detail=f"Invalid value for '{field_name}'", )
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid value for '{field_name}'",
+            )
 
         if operator not in CONDITION_BUILDERS:
-            raise HTTPException( status_code=400, detail=f"Unsupported filter operator '{operator}'", )
-        
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported filter operator '{operator}'",
+            )
+
         conditions.append(CONDITION_BUILDERS[operator](column, value))
 
     return conditions
+
 
 class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     """Reusable get/create/update/delete helper bound to one SQLAlchemy model.
@@ -97,24 +118,36 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     def get_all(self, db: Session) -> Sequence[ModelType]:
         result = db.scalars(select(self.model)).all()
         if not result:
-            raise HTTPException(status_code=404, detail=f"No {self.model.__name__} records found")
+            raise HTTPException(
+                status_code=404, detail=f"No {self.model.__name__} records found"
+            )
         return result
 
     def search(self, db: Session, filters: dict) -> Sequence[ModelType]:
         """get_all when no filters are supplied, otherwise get_many_by(**filters)."""
         return self.get_all(db) if not filters else self.get_many_by(db, **filters)
 
-    def search_conditions( self, db: Session, conditions: list[ColumnElement[bool]],) -> Sequence[ModelType]:
+    def search_conditions(
+        self,
+        db: Session,
+        conditions: list[ColumnElement[bool]],
+    ) -> Sequence[ModelType]:
         statement = select(self.model).where(*conditions)
         result = db.scalars(statement).all()
 
         if not result:
-            raise HTTPException( status_code=404, detail=self.not_found_detail, )
+            raise HTTPException(
+                status_code=404,
+                detail=self.not_found_detail,
+            )
         return result
 
     def require_filters(self, filters: dict) -> dict:
         if not filters:
-            raise HTTPException(status_code=400, detail="At least one filter query parameter is required")
+            raise HTTPException(
+                status_code=400,
+                detail="At least one filter query parameter is required",
+            )
         return filters
 
     def create(self, db: Session, obj_in: CreateSchemaType) -> ModelType:
@@ -124,7 +157,9 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         db.refresh(db_obj)
         return db_obj
 
-    def update(self, db: Session, db_obj: ModelType, obj_in: UpdateSchemaType) -> ModelType:
+    def update(
+        self, db: Session, db_obj: ModelType, obj_in: UpdateSchemaType
+    ) -> ModelType:
         for field, value in obj_in.model_dump(exclude_unset=True).items():
             setattr(db_obj, field, value)
         db.commit()
@@ -136,7 +171,9 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         db.commit()
         return db_obj
 
-    def delete_many(self, db: Session, db_objs: Sequence[ModelType]) -> Sequence[ModelType]:
+    def delete_many(
+        self, db: Session, db_objs: Sequence[ModelType]
+    ) -> Sequence[ModelType]:
         for db_obj in db_objs:
             db.delete(db_obj)
         db.commit()

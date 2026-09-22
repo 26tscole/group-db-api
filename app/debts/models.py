@@ -1,6 +1,7 @@
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, BigInteger
 from app.database import Base
 
+
 class Debt(Base):
     __tablename__ = "debts"
 

@@ -66,10 +66,8 @@ def build_conditions( model: Type[ModelType], params: Mapping[str, str], allowed
             raise HTTPException( status_code=400, detail=f"Invalid value for '{field_name}'", )
 
         if operator not in CONDITION_BUILDERS:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Unsupported filter operator '{operator}'",
-            )
+            raise HTTPException( status_code=400, detail=f"Unsupported filter operator '{operator}'", )
+        
         conditions.append(CONDITION_BUILDERS[operator](column, value))
 
     return conditions

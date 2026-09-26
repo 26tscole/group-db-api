@@ -3,6 +3,7 @@ from unittest import result
 from fastapi import HTTPException
 from pydantic import BaseModel, TypeAdapter
 from sqlalchemy import ColumnElement, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 ModelType = TypeVar("ModelType")
@@ -153,7 +154,14 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     def create(self, db: Session, obj_in: CreateSchemaType) -> ModelType:
         db_obj = self.model(**obj_in.model_dump())
         db.add(db_obj)
-        db.commit()
+        try:
+            db.commit()
+        except IntegrityError as exc:
+            db.rollback()
+            raise HTTPException(
+                status_code=409,
+                detail="A record with the same unique value already exists",
+            ) from exc
         db.refresh(db_obj)
         return db_obj
 
@@ -162,7 +170,14 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     ) -> ModelType:
         for field, value in obj_in.model_dump(exclude_unset=True).items():
             setattr(db_obj, field, value)
-        db.commit()
+        try:
+            db.commit()
+        except IntegrityError as exc:
+            db.rollback()
+            raise HTTPException(
+                status_code=409,
+                detail="A record with the same unique value already exists",
+            ) from exc
         db.refresh(db_obj)
         return db_obj
 

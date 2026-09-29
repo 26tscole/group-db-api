@@ -10,6 +10,7 @@ from app.groups import models as _group_models
 from app.users import models as _user_models
 from app.debts import models as _debt_models
 from app.activities import models as _activity_models
+from app.ai import models as _ai_models
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

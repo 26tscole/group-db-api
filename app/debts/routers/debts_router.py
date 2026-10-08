@@ -2,7 +2,7 @@ from fastapi import APIRouter, Request
 from app.debts.models import Debt
 from app.debts import schema
 from app.crud import CRUDBase, build_filters
-from app.dependencies import db_dependency
+from app.db_deps import db_dependency
 
 router = APIRouter(prefix="/debts", tags=["debts"])
 

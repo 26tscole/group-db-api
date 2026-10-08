@@ -2,7 +2,7 @@ from fastapi import APIRouter, Request
 from app.users.models import Account
 from app.users import schema
 from app.crud import CRUDBase, build_filters
-from app.dependencies import db_dependency
+from app.db_deps import db_dependency
 from app.users.services.accounts_service import search_accounts
 
 router = APIRouter(prefix="/accounts", tags=["accounts"])

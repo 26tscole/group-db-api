@@ -1,6 +1,5 @@
 from datetime import date
-from pydantic import BaseModel
-from datetime import date
+from pydantic import AliasChoices, BaseModel, Field
 
 
 class createUserRequest(BaseModel):
@@ -33,8 +32,15 @@ class UserUpdate(BaseModel):
     address: str | None = None
 
 
-class UserResponse(UserCreate):
-    user_id: int
+class UserResponse(BaseModel):
+    id: int 
+    username: str
+    first_name: str
+    last_name: str
+    date_of_birth: date
+    phone_number: str | None = None
+    email: str
+    address: str | None = None
 
     model_config = {"from_attributes": True}
 

@@ -1,10 +1,11 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import os
+from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from starlette import status
-from app.dependencies import db_dependency
+from app.db_deps import db_dependency
 from app.users.models import User
 from app.users.schema import TokenData, createUserRequest
 from pwdlib import PasswordHash
@@ -64,12 +65,7 @@ async def login_for_access_token(
             detail="Invalid username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = jwt.encode(
-        {"sub": user.username, "exp": datetime.utcnow() + access_token_expires},
-        SECRET_KEY,
-        algorithm=ALGORITHM,
-    )
+    access_token = create_access_token(user.username, user.id)
     return {"access_token": access_token, "token_type": "bearer"}
 
 
@@ -80,3 +76,31 @@ def authenticate_user(db: db_dependency, username: str, password: str):
     if not verify_password(password, user.hashed_password):
         return False
     return user
+
+
+def create_access_token(username: str, user_id: int, expires_delta: timedelta = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)):
+    expires = datetime.now(timezone.utc) + expires_delta
+    encode = {"sub": username, "user_id": user_id, "exp": expires}
+    return jwt.encode(encode, SECRET_KEY, algorithm=ALGORITHM)
+
+
+async def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        user_id: int = payload.get("user_id")
+        if username is None or user_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authentication credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        return {"username": username, "user_id": user_id}
+    except jwt.PyJWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+user_dependency = Annotated[dict, Depends(get_current_user)]

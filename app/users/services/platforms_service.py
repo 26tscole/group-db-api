@@ -1,7 +1,7 @@
 from app.users.models import Platform
 from app.users import schema
 from app.crud import CRUDBase, build_filters
-from app.dependencies import db_dependency
+from app.db_deps import db_dependency
 from fastapi import Request
 
 platform_crud = CRUDBase[Platform, schema.PlatformCreate, schema.PlatformUpdate](

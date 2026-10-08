@@ -1,10 +1,21 @@
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, HTTPException
 from app.users import schema
-from app.dependencies import db_dependency
+from app.users.models import User
+from app.db_deps import db_dependency
+from app.users.security import user_dependency
 from app.users.services.users_service import search_users, create_user, update_user, delete_users, delete_all_users
 
 
 router = APIRouter(prefix="/users", tags=["users"])
+
+@router.get("/me", response_model=schema.UserResponse)
+async def get_current_user_profile(current_user: user_dependency, db: db_dependency):
+    if current_user is None:
+        raise HTTPException(status_code=401, detail="Authentication Failed")
+    db_user = db.query(User).filter(User.id == current_user["user_id"]).first()
+    if db_user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return db_user
 
 # search users
 @router.get("/", response_model=list[schema.UserResponse])

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Request
 from app.activities.models import Activity_logs
 from app.activities import schema
 from app.crud import CRUDBase, build_filters
-from app.dependencies import db_dependency
+from app.db_deps import db_dependency
 
 router = APIRouter(prefix="/activity_logs", tags=["activity_logs"])
 

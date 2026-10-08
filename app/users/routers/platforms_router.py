@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Request
 from app.users import schema
-from app.dependencies import db_dependency
+from app.db_deps import db_dependency
 from app.users.services.platforms_service import (
     search_platforms,
     create_platform,

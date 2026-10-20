@@ -1,5 +1,4 @@
 from typing import Generic, Iterable, Mapping, Sequence, Type, TypeVar
-from unittest import result
 from fastapi import HTTPException
 from pydantic import BaseModel, TypeAdapter
 from sqlalchemy import ColumnElement, select

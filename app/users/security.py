@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 import os
 from typing import Annotated
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from starlette import status
@@ -53,8 +53,9 @@ async def create_user(db: db_dependency, create_user_request: createUserRequest)
     db.refresh(create_user_model)
     return create_user_model
 
-@router.post("/token", response_model=TokenData)
+@router.post("/token")
 async def login_for_access_token(
+    response: Response,
     db: db_dependency,
     form_data: OAuth2PasswordRequestForm = Depends()
 ):
@@ -66,7 +67,21 @@ async def login_for_access_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
     access_token = create_access_token(user.username, user.id)
-    return {"access_token": access_token, "token_type": "bearer"}
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=os.getenv("COOKIE_SECURE", "true").lower() == "true",  # set to false for local http
+        samesite="lax",
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        path="/",
+    )
+    return {"message": "Logged in"}
+
+@router.post("/logout")
+async def logout(response: Response):
+    response.delete_cookie(key="access_token")
+    return {"message": "Logged out"}
 
 
 def authenticate_user(db: db_dependency, username: str, password: str):
@@ -84,7 +99,10 @@ def create_access_token(username: str, user_id: int, expires_delta: timedelta = 
     return jwt.encode(encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
-async def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]):
+async def get_current_user(request: Request):
+    token = request.cookies.get("access_token")
+    if not token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")

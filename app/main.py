@@ -1,4 +1,6 @@
+import os
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.groups.routers.group_router import router as group_router
 from app.groups.routers.member_router import router as member_router
 from app.users.routers.users_router import router as users_router
@@ -10,6 +12,15 @@ from app.activities.routers.activity_log_router import router as activity_log_ro
 from app.debts.routers.debts_router import router as debts_router
 
 app = FastAPI()
+
+# Cookies require explicit origins (no "*") and allow_credentials=True
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:5173").split(","),
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 all_routers = [
     security_router,

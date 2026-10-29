@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request
 from app.users import schema
 from app.db_deps import db_dependency
-from app.users.security import user_dependency
+from app.users.routers.security_router import user_dependency
 from app.users.services.users_service import update_user, get_user
 
 

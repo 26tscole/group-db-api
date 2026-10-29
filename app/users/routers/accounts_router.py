@@ -7,7 +7,7 @@ from app.users.services.accounts_service import search_accounts
 
 router = APIRouter(prefix="/accounts", tags=["accounts"])
 
-@router.get("/", response_model=list[schema.AccountWithDetails])
+@router.get("/", response_model=list[schema.AccountResponse])
 def get_accounts(
     request: Request,
     user_name: str | None = None,

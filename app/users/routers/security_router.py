@@ -2,12 +2,10 @@ from datetime import datetime, timedelta, timezone
 import os
 from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Response, Request
-from pydantic import BaseModel
-from sqlalchemy.orm import Session
 from starlette import status
 from app.db_deps import db_dependency
 from app.users.models import User
-from app.users.schema import TokenData, createUserRequest
+from app.users.schema import createUserRequest
 from pwdlib import PasswordHash
 from pwdlib.hashers.argon2 import Argon2Hasher
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm

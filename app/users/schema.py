@@ -1,7 +1,6 @@
 from datetime import date
 from pydantic import AliasChoices, BaseModel, Field
 
-
 class createUserRequest(BaseModel):
     username: str
     password: str
@@ -12,9 +11,6 @@ class createUserRequest(BaseModel):
     email: str
     address: str
 
-class TokenData(BaseModel):
-    access_token: str
-    token_type: str
 
 class UserUpdate(BaseModel):
     username: str | None = None
@@ -43,6 +39,10 @@ class AccountCreate(BaseModel):
     user_id: int
     platform_id: int
     username: str
+    external_id: str
+    access_token: str
+    refresh_token: str
+    created_at: str
     active_status: bool
 
 
@@ -54,7 +54,7 @@ class AccountUpdate(BaseModel):
 
 
 class AccountResponse(AccountCreate):
-    account_id: int
+    id: int
 
     model_config = {"from_attributes": True}
 
@@ -70,25 +70,6 @@ class PlatformUpdate(BaseModel):
 
 
 class PlatformResponse(PlatformCreate):
-    platform_id: int
-    url: str | None = None
+    id: int
 
     model_config = {"from_attributes": True}
-
-
-class UserSummary(BaseModel):
-    user_id: int
-    name: str
-    model_config = {"from_attributes": True}
-
-
-class PlatformSummary(BaseModel):
-    platform_id: int
-    name: str | None
-    url: str | None
-    model_config = {"from_attributes": True}
-
-
-class AccountWithDetails(AccountResponse):
-    user: UserSummary | None = None
-    platform: PlatformSummary | None = None

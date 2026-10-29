@@ -3,7 +3,7 @@ from app.users import schema
 from app.crud import CRUDBase, build_filters
 from app.db_deps import db_dependency
 from fastapi import HTTPException
-from app.users.security import user_dependency
+from app.users.routers.security_router import user_dependency
 
 user_crud = CRUDBase[User, schema.createUserRequest, schema.UserUpdate](
     User, not_found_detail="User not found"

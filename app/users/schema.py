@@ -16,16 +16,10 @@ class TokenData(BaseModel):
     access_token: str
     token_type: str
 
-class UserCreate(BaseModel):
-    name: str
-    date_of_birth: date
-    phone_number: str
-    email: str
-    address: str
-
-
 class UserUpdate(BaseModel):
-    name: str | None = None
+    username: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
     date_of_birth: date | None = None
     phone_number: str | None = None
     email: str | None = None

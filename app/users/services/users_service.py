@@ -2,28 +2,18 @@ from app.users.models import User
 from app.users import schema
 from app.crud import CRUDBase, build_filters
 from app.db_deps import db_dependency
-from fastapi import Request
+from fastapi import HTTPException
+from app.users.security import user_dependency
 
-user_crud = CRUDBase[User, schema.UserCreate, schema.UserUpdate](
+user_crud = CRUDBase[User, schema.createUserRequest, schema.UserUpdate](
     User, not_found_detail="User not found"
 )
 
-def search_users(request: Request, db: db_dependency):
-    filters = build_filters(User, request.query_params)
-    return user_crud.search(db, filters)
+def get_user(current_user: user_dependency, db: db_dependency):
+    if current_user is None:
+        raise HTTPException(status_code=401, detail="Authentication Failed")
+    return user_crud.get_by(db, id=current_user["user_id"])
 
-def create_user(user: schema.UserCreate, db: db_dependency):
-    return user_crud.create(db, user)
-
-def update_user(request: Request, user: schema.UserUpdate, db: db_dependency):
-    filters = user_crud.require_filters(build_filters(User, request.query_params))
-    db_user = user_crud.get_by(db, **filters)
+def update_user(current_user: user_dependency, user: schema.UserUpdate, db: db_dependency):
+    db_user = user_crud.get_by(db, id=current_user["user_id"])
     return user_crud.update(db, db_user, user)
-
-def delete_users(request: Request, db: db_dependency):
-    filters = user_crud.require_filters(build_filters(User, request.query_params))
-    db_users = user_crud.get_many_by(db, **filters)
-    return user_crud.delete_many(db, db_users)
-
-def delete_all_users(db: db_dependency):
-    return user_crud.delete_all(db)

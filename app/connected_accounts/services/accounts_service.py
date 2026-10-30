@@ -1,6 +1,6 @@
 from sqlalchemy import select
-from app.users.models import Account, User, Platform
-from app.users import schema
+from app.connected_accounts.models import Account, Platform
+from app.connected_accounts import schema
 from app.crud import CRUDBase, build_filters
 from app.db_deps import db_dependency
 from fastapi import Request

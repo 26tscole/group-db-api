@@ -1,7 +1,4 @@
-
-from pydantic import AliasChoices, BaseModel, Field
-from datetime import date
-
+from pydantic import BaseModel
 
 class AccountCreate(BaseModel):
     user_id: int

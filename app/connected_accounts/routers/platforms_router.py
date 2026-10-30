@@ -1,12 +1,11 @@
 from fastapi import APIRouter, Request
-from app.users import schema
+from app.connected_accounts import schema
 from app.db_deps import db_dependency
 from app.connected_accounts.services.platforms_service import (
     search_platforms,
     create_platform,
     update_platform,
     delete_platforms,
-    delete_all_platforms,
 )
 
 router = APIRouter(prefix="/platforms", tags=["platforms"])

@@ -3,10 +3,8 @@ from sqlalchemy import (
     Column,
     Date,
     DateTime,
-    ForeignKey,
     Integer,
     String,
-    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func

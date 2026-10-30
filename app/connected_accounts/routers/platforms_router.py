@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request
 from app.users import schema
 from app.db_deps import db_dependency
-from app.users.services.platforms_service import (
+from app.connected_accounts.services.platforms_service import (
     search_platforms,
     create_platform,
     update_platform,
@@ -33,9 +33,3 @@ async def update_platform_endpoint(request: Request, platform: schema.PlatformUp
 @router.delete("/", response_model=list[schema.PlatformResponse])
 async def delete_platforms_endpoint(request: Request, db: db_dependency):
     return delete_platforms(request, db)
-
-
-# delete all platforms
-@router.delete("/all", response_model=list[schema.PlatformResponse])
-async def delete_all_platforms_endpoint(db: db_dependency):
-    return delete_all_platforms(db)

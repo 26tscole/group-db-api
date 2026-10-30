@@ -7,6 +7,7 @@ from alembic import context
 
 from app.database import Base, URL_DATABASE
 from app.users import models as _user_models
+from app.connected_accounts import models as _connected_account_models
 
 # TEMPORARY: re-enable these once each model overhaul is finished
 # from app.groups import models as _group_models
